@@ -27,9 +27,25 @@ func cliSend(cmd *cobra.Command, args []string) {
 }
 
 func cliCreate(cmd *cobra.Command, args []string) {
-
+	tx, err := core.Create(HOST, AddressFlag, AmtFlag, GasFlag, GasPriceFlag, DataFlag, NonceFlag)
+	common.IfExit(err)
+	fmt.Println(tx)
+	r, err := core.SignAndBroadcast(HOST, SIGN, tx, SignFlag, BroadcastFlag, WaitFlag)
+	common.IfExit(err)
+	fmt.Println(tx)
+	fmt.Println("TxID", r)
 }
 
 func cliCall(cmd *cobra.Command, args []string) {
+	tx, err := core.Call(HOST, AddressFlag, ToFlag, AmtFlag, GasFlag, GasPriceFlag, DataFlag, NonceFlag)
+	common.IfExit(err)
+	fmt.Println(tx)
+	r, err := core.SignAndBroadcast(HOST, SIGN, tx, SignFlag, BroadcastFlag, WaitFlag)
+	common.IfExit(err)
+	fmt.Println(tx)
+	fmt.Println("TxID", r)
+}
 
+func cliName(cmd *cobra.Command, args []string) {
+	fmt.Println("not implemented yet")
 }

@@ -15,6 +15,29 @@ func init() {
 	client.HOST = HOST
 }
 
+type ChainStatus struct {
+	ProtocolVersion string `json:"protocol_version"`
+	BlockNumber     int64  `json:"block_number"`
+}
+
+type NetStatus struct {
+	Version   string `json:"version"`
+	PeerCount int64  `json:"peer_count"`
+	Listening bool   `json:"listening"`
+}
+
+type MiningStatus struct {
+	Mining   bool   `json:"mining"`
+	Coinbase string `json:"coinbase"`
+	GasPrice string `json:"gas_price"` // hex
+}
+
+type Status struct {
+	ChainStatus  `json:"chain"`
+	NetStatus    `json:"net"`
+	MiningStatus `json:"mining"`
+}
+
 // eth: blockNumber, protocolVersion, coinbase, mining, gasPrice
 // net: peerCount, listening, version
 func cliStatus(cmd *cobra.Command, args []string) {
@@ -55,28 +78,42 @@ func cliStatus(cmd *cobra.Command, args []string) {
 	b, err := json.MarshalIndent(status, "", "\t")
 	common.IfExit(err)
 	fmt.Println(string(b))
-
 }
 
-type ChainStatus struct {
-	ProtocolVersion string `json:"protocol_version"`
-	BlockNumber     int64  `json:"block_number"`
+type Account struct {
+	Address     string `json:"address"`
+	Nonce       uint64 `json:"nonce"`
+	Balance     string `json:"balance"`
+	Code        string `json:"code"`
+	StorageHash string `json:"storage_hash"` // not sure this is supported but a storage map is (TODO)
 }
 
-type NetStatus struct {
-	Version   string `json:"version"`
-	PeerCount int64  `json:"peer_count"`
-	Listening bool   `json:"listening"`
-}
+func cliAccount(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		common.Exit(fmt.Errorf("must specify an account"))
+	}
 
-type MiningStatus struct {
-	Mining   bool   `json:"mining"`
-	Coinbase string `json:"coinbase"`
-	GasPrice string `json:"gas_price"` // hex
-}
+	addr := args[0]
+	acc := new(Account)
+	acc.Address = addr
 
-type Status struct {
-	ChainStatus  `json:"chain"`
-	NetStatus    `json:"net"`
-	MiningStatus `json:"mining"`
+	r, err := client.RequestResponse("eth", "blockNumber")
+	common.IfExit(err)
+	blockNum := client.HexToInt(r.(string))
+
+	r, err = client.RequestResponse("eth", "getBalance", addr, blockNum)
+	common.IfExit(err)
+	acc.Balance = r.(string)
+
+	r, err = client.RequestResponse("eth", "getTransactionCount", addr, blockNum)
+	common.IfExit(err)
+	acc.Nonce = uint64(client.HexToInt(r.(string)))
+
+	r, err = client.RequestResponse("eth", "getCode", addr, blockNum)
+	common.IfExit(err)
+	acc.Code = r.(string)
+
+	b, err := json.MarshalIndent(acc, "", "\t")
+	common.IfExit(err)
+	fmt.Println(string(b))
 }

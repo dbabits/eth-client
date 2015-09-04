@@ -29,11 +29,18 @@ func main() {
 		Run:   cliStatus,
 	}
 
+	var accountCmd = &cobra.Command{
+		Use:   "account",
+		Short: "ethinfo account",
+		Long:  "print an account",
+		Run:   cliAccount,
+	}
+
 	var rootCmd = &cobra.Command{
 		Use:   "ethinfo",
 		Short: "a tool for talking to ethereum chains",
 		Long:  "a tool for talking to ethereum chains",
 	}
-	rootCmd.AddCommand(versionCmd, statusCmd)
+	rootCmd.AddCommand(versionCmd, statusCmd, accountCmd)
 	rootCmd.Execute()
 }

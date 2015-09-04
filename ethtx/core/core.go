@@ -17,6 +17,7 @@ import (
 )
 
 // All ethereum transactions have a common form
+// NOTE: this struct isn't exported from go-ethereum/core/types :(
 type Transaction struct {
 	Nonce           uint64
 	Price, GasLimit *big.Int
@@ -30,6 +31,10 @@ type Transaction struct {
 }
 
 func (tx *Transaction) String() string {
+	var rec []byte
+	if tx.Recipient != nil {
+		rec = tx.Recipient.Bytes()
+	}
 	return fmt.Sprintf(`
 	Nonce: %d,
 	To: %x,
@@ -37,23 +42,23 @@ func (tx *Transaction) String() string {
 	GasLimit: %x,
 	GasPrice: %x,
 	Data: %x
-`, tx.Nonce, *tx.Recipient, tx.Amount.Bytes(), tx.GasLimit.Bytes(), tx.Price.Bytes(), tx.Data)
+`, tx.Nonce, rec, tx.Amount.Bytes(), tx.GasLimit.Bytes(), tx.Price.Bytes(), tx.Data)
 }
 
-func NewTransaction(to, from common.Address, nonce uint64, amt, gas, price *big.Int, data []byte) *Transaction {
+func NewTransaction(to, from *common.Address, nonce uint64, amt, gas, price *big.Int, data []byte) *Transaction {
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
 	}
 	tx := &Transaction{
 		Nonce:     nonce,
-		Recipient: &to,
+		Recipient: to,
 		Data:      data,
 		Amount:    new(big.Int),
 		GasLimit:  new(big.Int),
 		Price:     new(big.Int),
 		R:         new(big.Int),
 		S:         new(big.Int),
-		from:      &from,
+		from:      from,
 	}
 	if amt != nil {
 		tx.Amount.Set(amt)
@@ -67,6 +72,7 @@ func NewTransaction(to, from common.Address, nonce uint64, amt, gas, price *big.
 	return tx
 }
 
+// rlp encode and hash
 func rlpHash(x interface{}) (h common.Hash) {
 	hw := sha3.NewKeccak256()
 	rlp.Encode(hw, x)
@@ -74,6 +80,7 @@ func rlpHash(x interface{}) (h common.Hash) {
 	return h
 }
 
+// Hash of the transaction for signing
 func (tx *Transaction) SignBytes() []byte {
 	h := rlpHash([]interface{}{
 		tx.Nonce,
@@ -86,6 +93,7 @@ func (tx *Transaction) SignBytes() []byte {
 	return h[:]
 }
 
+// Apply the signature to the transaction
 func (tx *Transaction) ApplySignature(sig [65]byte) {
 	tx.R = new(big.Int).SetBytes(sig[:32])
 	tx.S = new(big.Int).SetBytes(sig[32:64])
@@ -127,7 +135,44 @@ func Send(nodeAddr, fromAddr, toAddr, amtS, gasS, priceS string, nonce uint64) (
 	}
 	to := common.BytesToAddress(toAddrBytes)
 
-	return NewTransaction(to, from, nonce, amt, gas, price, nil), nil
+	return NewTransaction(&to, &from, nonce, amt, gas, price, nil), nil
+}
+
+func Create(nodeAddr, fromAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transaction, error) {
+	from, nonce, amt, gas, price, err := checkCommon(nodeAddr, fromAddr, amtS, gasS, priceS, nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	dataBytes, err := hex.DecodeString(data)
+	if err != nil {
+		return nil, fmt.Errorf("data is bad hex: %s", data)
+	}
+	return NewTransaction(nil, &from, nonce, amt, gas, price, dataBytes), nil
+}
+
+func Call(nodeAddr, fromAddr, toAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transaction, error) {
+	from, nonce, amt, gas, price, err := checkCommon(nodeAddr, fromAddr, amtS, gasS, priceS, nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	if toAddr == "" {
+		return nil, fmt.Errorf("destination address must be given with --to flag")
+	}
+
+	toAddrBytes, err := hex.DecodeString(toAddr)
+	if err != nil {
+		return nil, fmt.Errorf("toAddr is bad hex: %v", err)
+	}
+	to := common.BytesToAddress(toAddrBytes)
+
+	dataBytes, err := hex.DecodeString(data)
+	if err != nil {
+		return nil, fmt.Errorf("data is bad hex: %s", data)
+	}
+
+	return NewTransaction(&to, &from, nonce, amt, gas, price, dataBytes), nil
 }
 
 //------------------------------------------------------------------------------------
@@ -259,11 +304,12 @@ func SignAndBroadcast(nodeAddr, signAddr string, tx *Transaction, sign, broadcas
 					}()
 				}
 			}*/
-		receipt, err := Broadcast(tx, nodeAddr)
+		var r interface{}
+		r, err = Broadcast(tx, nodeAddr)
 		if err != nil {
 			return "", err
 		}
-		return receipt.(string), nil
+		return r.(string), nil
 		/*
 			txResult = &TxResult{
 				Hash: receipt.TxHash,
@@ -327,20 +373,23 @@ func checkCommon(nodeAddr, addr, amtS, gasS, priceS string, seq uint64) (from co
 			return
 		}
 
-		// fetch nonce from node
-		/*
-			client := cclient.NewClient(nodeAddr, "HTTP")
-			ac, err2 := client.GetAccount(addrBytes)
-			if err2 != nil {
-				err = fmt.Errorf("Error connecting to node (%s) to fetch nonce: %s", nodeAddr, err2.Error())
-				return
-			}
-			if ac == nil || ac.Account == nil {
-				err = fmt.Errorf("unknown account %X", addrBytes)
-				return
-			}
-			nonce = uint64(ac.Account.Sequence) + 1
-		*/
+		var r interface{}
+		// fetch block num
+		r, err = client.RequestResponse("eth", "blockNumber")
+		if err != nil {
+			err = fmt.Errorf("Error fetching block number", err)
+			return
+		}
+		// NOTE: both block num and account nonces are hex. (why?!)
+		blockNum := client.HexToInt(r.(string))
+
+		r, err = client.RequestResponse("eth", "getTransactionCount", addr, blockNum)
+		if err != nil {
+			err = fmt.Errorf("Error fetching account nonce", err)
+			return
+		}
+
+		nonce = uint64(client.HexToInt(r.(string))) + 1
 	} else {
 		nonce = seq
 	}
