@@ -21,7 +21,7 @@ var (
 var (
 
 	// all transactions take
-	NonceFlag    int64
+	NonceFlag    uint64
 	AmtFlag      string
 	GasFlag      string
 	GasPriceFlag string
@@ -43,8 +43,8 @@ var (
 
 func addCommonFlags(cmds []*cobra.Command) {
 	for _, c := range cmds {
-		c.Flags().Int64VarP(&NonceFlag, "nonce", "n", 0, "nonce for transaction")
-		c.Flags().StringVarP(&AmtFlag, "amt", "a", "a", "amount to send")
+		c.Flags().Uint64VarP(&NonceFlag, "nonce", "n", 0, "nonce for transaction")
+		c.Flags().StringVarP(&AmtFlag, "amt", "a", "", "amount to send")
 		c.Flags().StringVarP(&GasFlag, "gas", "g", "", "amount of gas to provide")
 		c.Flags().StringVarP(&GasPriceFlag, "price", "p", "", "price we're willing to pay per gas")
 
