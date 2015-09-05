@@ -2,14 +2,31 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/eris-ltd/mint-client/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/eris-ltd/eth-client/utils"
+
+	"github.com/spf13/cobra"
 )
 
 var (
 	HOST_IP   = "0.0.0.0"
 	HOST_PORT = "8545"
-	HOST      = fmt.Sprintf("http://%s:%s", HOST_IP, HOST_PORT)
+	HOST      = fmt.Sprintf("%s:%s", HOST_IP, HOST_PORT)
+
+	client *utils.Client
+)
+
+// override the hardcoded defaults with env variables if they're set
+func init() {
+	nodeAddr := os.Getenv("ETHTX_NODE_ADDR")
+	if nodeAddr != "" {
+		HOST = nodeAddr
+	}
+}
+
+var (
+	HostAddrFlag string
 )
 
 func main() {
@@ -41,6 +58,16 @@ func main() {
 		Short: "a tool for talking to ethereum chains",
 		Long:  "a tool for talking to ethereum chains",
 	}
+	rootCmd.PersistentFlags().StringVarP(&HostAddrFlag, "node-addr", "", HOST, "<ip>:<port> of the node we're talking to")
+
+	rootCmd.PersistentPreRun = before
+
 	rootCmd.AddCommand(versionCmd, statusCmd, accountCmd)
 	rootCmd.Execute()
+}
+
+func before(cmd *cobra.Command, args []string) {
+	HostAddrFlag = "http://" + HostAddrFlag
+	client = utils.NewClient(HostAddrFlag)
+
 }

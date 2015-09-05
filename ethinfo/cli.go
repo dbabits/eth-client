@@ -4,16 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/eris-ltd/eth-client/client"
+	"github.com/eris-ltd/eth-client/utils"
 
-	"github.com/eris-ltd/mint-client/Godeps/_workspace/src/github.com/eris-ltd/common/go/common"
-	"github.com/eris-ltd/mint-client/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/eris-ltd/common/go/common"
+	"github.com/spf13/cobra"
 )
-
-// TODO ...
-func init() {
-	client.HOST = HOST
-}
 
 type ChainStatus struct {
 	ProtocolVersion string `json:"protocol_version"`
@@ -45,7 +40,7 @@ func cliStatus(cmd *cobra.Command, args []string) {
 
 	r, err := client.RequestResponse("eth", "blockNumber")
 	common.IfExit(err)
-	status.ChainStatus.BlockNumber = client.HexToInt(r.(string))
+	status.ChainStatus.BlockNumber = utils.HexToInt(r.(string))
 
 	r, err = client.RequestResponse("eth", "protocolVersion")
 	common.IfExit(err)
@@ -99,7 +94,7 @@ func cliAccount(cmd *cobra.Command, args []string) {
 
 	r, err := client.RequestResponse("eth", "blockNumber")
 	common.IfExit(err)
-	blockNum := client.HexToInt(r.(string))
+	blockNum := utils.HexToInt(r.(string))
 
 	r, err = client.RequestResponse("eth", "getBalance", addr, blockNum)
 	common.IfExit(err)
@@ -107,7 +102,7 @@ func cliAccount(cmd *cobra.Command, args []string) {
 
 	r, err = client.RequestResponse("eth", "getTransactionCount", addr, blockNum)
 	common.IfExit(err)
-	acc.Nonce = uint64(client.HexToInt(r.(string)))
+	acc.Nonce = uint64(utils.HexToInt(r.(string)))
 
 	r, err = client.RequestResponse("eth", "getCode", addr, blockNum)
 	common.IfExit(err)

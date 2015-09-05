@@ -1,4 +1,4 @@
-package client
+package utils
 
 import (
 	"bytes"
@@ -11,11 +11,17 @@ import (
 	"github.com/ethereum/go-ethereum/rpc/shared"
 )
 
-var JSONRPC = "2.0"
+const JSONRPC = "2.0"
 
-var HOST string
+type Client struct {
+	Host string
+}
 
-func RequestResponse(api, method string, args ...interface{}) (interface{}, error) {
+func NewClient(h string) *Client {
+	return &Client{h}
+}
+
+func (c *Client) RequestResponse(api, method string, args ...interface{}) (interface{}, error) {
 	var msg json.RawMessage
 	b, err := json.Marshal(args)
 	if err != nil {
@@ -28,7 +34,7 @@ func RequestResponse(api, method string, args ...interface{}) (interface{}, erro
 		Params:  msg,
 		Id:      "",
 	}
-	body, err := requestResponse(request)
+	body, err := c.requestResponse(request)
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +45,12 @@ func RequestResponse(api, method string, args ...interface{}) (interface{}, erro
 	return r, err
 }
 
-func requestResponse(s *shared.Request) (b []byte, err error) {
+func (c *Client) requestResponse(s *shared.Request) (b []byte, err error) {
 	if b, err = json.Marshal(s); err != nil {
 		return nil, fmt.Errorf("Client side error: %v", err)
 	}
 	buf := bytes.NewBuffer(b)
-	resp, err := http.Post(HOST, "text/json", buf)
+	resp, err := http.Post(c.Host, "text/json", buf)
 	if err != nil {
 		return nil, err
 	}

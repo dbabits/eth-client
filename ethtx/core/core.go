@@ -8,13 +8,17 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strconv"
 
-	"github.com/eris-ltd/eth-client/client"
+	"github.com/eris-ltd/eth-client/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/ethereum/go-ethereum/rlp"
 )
+
+// This must be initialized
+var EthClient *utils.Client
 
 // All ethereum transactions have a common form
 // NOTE: this struct isn't exported from go-ethereum/core/types :(
@@ -45,6 +49,11 @@ func (tx *Transaction) String() string {
 `, tx.Nonce, rec, tx.Amount.Bytes(), tx.GasLimit.Bytes(), tx.Price.Bytes(), tx.Data)
 }
 
+// Return the signature as a byte array
+func (tx *Transaction) Signature() []byte {
+	return append(append(tx.R.Bytes(), tx.S.Bytes()...), tx.V)
+}
+
 func NewTransaction(to, from *common.Address, nonce uint64, amt, gas, price *big.Int, data []byte) *Transaction {
 	if len(data) > 0 {
 		data = common.CopyBytes(data)
@@ -70,6 +79,18 @@ func NewTransaction(to, from *common.Address, nonce uint64, amt, gas, price *big
 		tx.Price.Set(price)
 	}
 	return tx
+}
+
+// Creates an ethereum address from a create transaction
+// If the tx doesn't create a contract, CreateAddress returns nil
+func (tx *Transaction) CreateAddress() []byte {
+	if tx.Recipient != nil {
+		return nil
+	}
+	data, _ := rlp.EncodeToBytes([]interface{}{tx.from, tx.Nonce})
+	hw := sha3.NewKeccak256()
+	hw.Write(data)
+	return hw.Sum(nil)
 }
 
 // rlp encode and hash
@@ -119,8 +140,8 @@ func (tx *Transaction) Sign(signAddr string) error {
 // core functions with string args.
 // validates strings and forms transaction
 
-func Send(nodeAddr, fromAddr, toAddr, amtS, gasS, priceS string, nonce uint64) (*Transaction, error) {
-	from, nonce, amt, gas, price, err := checkCommon(nodeAddr, fromAddr, amtS, gasS, priceS, nonce)
+func Send(fromAddr, toAddr, amtS, gasS, priceS string, nonce uint64) (*Transaction, error) {
+	from, nonce, amt, gas, price, err := checkCommon(fromAddr, amtS, gasS, priceS, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -138,8 +159,8 @@ func Send(nodeAddr, fromAddr, toAddr, amtS, gasS, priceS string, nonce uint64) (
 	return NewTransaction(&to, &from, nonce, amt, gas, price, nil), nil
 }
 
-func Create(nodeAddr, fromAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transaction, error) {
-	from, nonce, amt, gas, price, err := checkCommon(nodeAddr, fromAddr, amtS, gasS, priceS, nonce)
+func Create(fromAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transaction, error) {
+	from, nonce, amt, gas, price, err := checkCommon(fromAddr, amtS, gasS, priceS, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +172,8 @@ func Create(nodeAddr, fromAddr, amtS, gasS, priceS, data string, nonce uint64) (
 	return NewTransaction(nil, &from, nonce, amt, gas, price, dataBytes), nil
 }
 
-func Call(nodeAddr, fromAddr, toAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transaction, error) {
-	from, nonce, amt, gas, price, err := checkCommon(nodeAddr, fromAddr, amtS, gasS, priceS, nonce)
+func Call(fromAddr, toAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transaction, error) {
+	from, nonce, amt, gas, price, err := checkCommon(fromAddr, amtS, gasS, priceS, nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +230,7 @@ func Sign(signBytes, signAddr, signRPC string) (sig [65]byte, err error) {
 	return
 }
 
-func Broadcast(tx *Transaction, broadcastRPC string) (interface{}, error) {
+func Broadcast(tx *Transaction) (interface{}, error) {
 	w := new(bytes.Buffer)
 	if err := rlp.Encode(w, tx); err != nil {
 		return nil, err
@@ -217,7 +238,7 @@ func Broadcast(tx *Transaction, broadcastRPC string) (interface{}, error) {
 	fmt.Println("Tx Serialized")
 	txHex := fmt.Sprintf("%X", w.Bytes())
 	fmt.Println(txHex)
-	r, err := client.RequestResponse("eth", "sendRawTransaction", txHex)
+	r, err := EthClient.RequestResponse("eth", "sendRawTransaction", txHex)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +292,7 @@ type TxResult struct {
 	// can differentiate mempool errors from other
 }
 
-func SignAndBroadcast(nodeAddr, signAddr string, tx *Transaction, sign, broadcast, wait bool) (txid string, err error) {
+func SignAndBroadcast(signAddr string, tx *Transaction, sign, broadcast, wait bool) (txid string, err error) {
 	if sign {
 		if err = tx.Sign(signAddr); err != nil {
 			return
@@ -305,7 +326,7 @@ func SignAndBroadcast(nodeAddr, signAddr string, tx *Transaction, sign, broadcas
 				}
 			}*/
 		var r interface{}
-		r, err = Broadcast(tx, nodeAddr)
+		r, err = Broadcast(tx)
 		if err != nil {
 			return "", err
 		}
@@ -326,10 +347,8 @@ func SignAndBroadcast(nodeAddr, signAddr string, tx *Transaction, sign, broadcas
 //------------------------------------------------------------------------------------
 // convenience function
 
-func stringToBig(s string) (*big.Int, error) {
-	if len(s) > 2 && s[:2] == "0x" {
-		s = s[2:]
-	}
+// assumes the "0x" has already been clipped
+func hexToBig(s string) (*big.Int, error) {
 	b, err := hex.DecodeString(s)
 	if err != nil {
 		return nil, err
@@ -337,8 +356,20 @@ func stringToBig(s string) (*big.Int, error) {
 	return new(big.Int).SetBytes(b), nil
 }
 
-// if the nonce is given, the nodeAddr and addr are not needed
-func checkCommon(nodeAddr, addr, amtS, gasS, priceS string, seq uint64) (from common.Address, nonce uint64, amount, gas, price *big.Int, err error) {
+// accepts hex or string encoded integers
+func stringToBig(s string) (*big.Int, error) {
+	if len(s) > 2 && s[:2] == "0x" {
+		return hexToBig(s[2:])
+	}
+	d, err := strconv.ParseInt(s, 0, 64)
+	if err != nil {
+		return nil, err
+	}
+	return big.NewInt(d), nil
+}
+
+// if the nonce is given, the addr is not needed
+func checkCommon(addr, amtS, gasS, priceS string, seq uint64) (from common.Address, nonce uint64, amount, gas, price *big.Int, err error) {
 	// resolve the big ints
 	if amount, err = stringToBig(amtS); err != nil {
 		err = fmt.Errorf("amt %s is bad hex: %v", amtS, err)
@@ -368,28 +399,29 @@ func checkCommon(nodeAddr, addr, amtS, gasS, priceS string, seq uint64) (from co
 
 	// resolve the nonce (or fetch it)
 	if seq == 0 {
-		if nodeAddr == "" {
-			err = fmt.Errorf("input must specify a nonce with the --nonce flag or use --node-addr (or MINTX_NODE_ADDR) to fetch the nonce from a node")
+		if EthClient.Host == "" {
+			// NOTE this error only applies to ethtx, not other possible consumers of ethtx/core
+			err = fmt.Errorf("input must specify a nonce with the --nonce flag or use --node-addr (or ETHTX_NODE_ADDR) to fetch the nonce from a node")
 			return
 		}
 
 		var r interface{}
 		// fetch block num
-		r, err = client.RequestResponse("eth", "blockNumber")
+		r, err = EthClient.RequestResponse("eth", "blockNumber")
 		if err != nil {
-			err = fmt.Errorf("Error fetching block number", err)
+			err = fmt.Errorf("Error fetching block number: %v", err)
 			return
 		}
 		// NOTE: both block num and account nonces are hex. (why?!)
-		blockNum := client.HexToInt(r.(string))
+		blockNum := utils.HexToInt(r.(string))
 
-		r, err = client.RequestResponse("eth", "getTransactionCount", addr, blockNum)
+		r, err = EthClient.RequestResponse("eth", "getTransactionCount", addr, blockNum)
 		if err != nil {
-			err = fmt.Errorf("Error fetching account nonce", err)
+			err = fmt.Errorf("Error fetching account nonce: %v", err)
 			return
 		}
 
-		nonce = uint64(client.HexToInt(r.(string))) + 1
+		nonce = uint64(utils.HexToInt(r.(string)))
 	} else {
 		nonce = seq
 	}

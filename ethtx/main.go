@@ -2,21 +2,47 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/eris-ltd/mint-client/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/eris-ltd/eth-client/ethtx/core"
+	"github.com/eris-ltd/eth-client/utils"
+
+	"github.com/eris-ltd/common/go/log"
+	"github.com/spf13/cobra"
 )
 
 var (
 	HOST_IP   = "0.0.0.0"
 	HOST_PORT = "8545"
-	HOST      = fmt.Sprintf("http://%s:%s", HOST_IP, HOST_PORT)
+	HOST      = fmt.Sprintf("%s:%s", HOST_IP, HOST_PORT)
 
 	SIGN_IP   = "0.0.0.0"
 	SIGN_PORT = "4767"
-	SIGN      = fmt.Sprintf("http://%s:%s", SIGN_IP, SIGN_PORT)
+	SIGN      = fmt.Sprintf("%s:%s", SIGN_IP, SIGN_PORT)
 
-	// TODO: overwrite by env and flags
+	ADDR = ""
+
+	client *utils.Client
 )
+
+// override the hardcoded defaults with env variables if they're set
+func init() {
+	signAddr := os.Getenv("ETHTX_SIGN_ADDR")
+	if signAddr != "" {
+		SIGN = signAddr
+	}
+
+	nodeAddr := os.Getenv("ETHTX_NODE_ADDR")
+	if nodeAddr != "" {
+		HOST = nodeAddr
+	}
+
+	addr := os.Getenv("ETHTX_ADDR")
+	if addr != "" {
+		ADDR = addr
+	}
+
+}
 
 var (
 
@@ -47,11 +73,6 @@ func addCommonFlags(cmds []*cobra.Command) {
 		c.Flags().StringVarP(&AmtFlag, "amt", "a", "", "amount to send")
 		c.Flags().StringVarP(&GasFlag, "gas", "g", "", "amount of gas to provide")
 		c.Flags().StringVarP(&GasPriceFlag, "price", "p", "", "price we're willing to pay per gas")
-
-		c.Flags().StringVarP(&AddressFlag, "addr", "", "", "address to use for signing")
-		c.Flags().BoolVarP(&SignFlag, "sign", "s", false, "sign the transaction")
-		c.Flags().BoolVarP(&BroadcastFlag, "broadcast", "b", false, "broadcast the tx to the chain")
-		c.Flags().BoolVarP(&WaitFlag, "wait", "w", false, "wait for the tx to be mined into a block")
 	}
 }
 
@@ -61,7 +82,7 @@ func main() {
 		Use:   "version",
 		Short: "check ethtx version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("0.0.1")
+			logger.Println("0.0.1")
 		},
 	}
 
@@ -100,7 +121,29 @@ func main() {
 		Short: "a tool for sending transactions to ethereum chains",
 		Long:  "a tool for sending transactions to ethereum chains",
 	}
+	rootCmd.PersistentFlags().StringVarP(&SignAddrFlag, "sign-addr", "", SIGN, "address to use for signing")
+	rootCmd.PersistentFlags().StringVarP(&HostAddrFlag, "node-addr", "", HOST, "address to use for signing")
+	rootCmd.PersistentFlags().StringVarP(&AddressFlag, "addr", "", ADDR, "address to use for signing")
+	rootCmd.PersistentFlags().BoolVarP(&SignFlag, "sign", "s", false, "sign the transaction")
+	rootCmd.PersistentFlags().BoolVarP(&BroadcastFlag, "broadcast", "b", false, "broadcast the tx to the chain")
+	rootCmd.PersistentFlags().BoolVarP(&WaitFlag, "wait", "w", false, "wait for the tx to be mined into a block")
+
+	rootCmd.PersistentPreRun = before
+	rootCmd.PersistentPostRun = after
+
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(commands...)
 	rootCmd.Execute()
+}
+
+func before(cmd *cobra.Command, args []string) {
+	SignAddrFlag = "http://" + SignAddrFlag
+	HostAddrFlag = "http://" + HostAddrFlag
+	core.EthClient = utils.NewClient(HostAddrFlag)
+
+	log.SetLoggers(2, os.Stdout, os.Stderr)
+}
+
+func after(cmd *cobra.Command, args []string) {
+	log.Flush()
 }
