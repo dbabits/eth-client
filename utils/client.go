@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ethereum/go-ethereum/rpc/shared"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/ethereum/go-ethereum/rpc/shared"
 )
 
 const JSONRPC = "2.0"

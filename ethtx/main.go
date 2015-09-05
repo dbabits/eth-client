@@ -7,8 +7,8 @@ import (
 	"github.com/eris-ltd/eth-client/ethtx/core"
 	"github.com/eris-ltd/eth-client/utils"
 
-	"github.com/eris-ltd/common/go/log"
-	"github.com/spf13/cobra"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/eris-ltd/common/go/log"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 var (

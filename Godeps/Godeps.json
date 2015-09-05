@@ -1,0 +1,58 @@
+{
+	"ImportPath": "github.com/eris-ltd/eth-client",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/eris-ltd/common/go/common",
+			"Rev": "f48a7aa1490bf08e013cbb0c128500e1c05bc25f"
+		},
+		{
+			"ImportPath": "github.com/eris-ltd/common/go/log",
+			"Rev": "f48a7aa1490bf08e013cbb0c128500e1c05bc25f"
+		},
+		{
+			"ImportPath": "github.com/ethereum/go-ethereum/common",
+			"Comment": "v0.9.39-192-g5876692",
+			"Rev": "587669215b878566c4a7b91fbf88a6fd2ec4f46a"
+		},
+		{
+			"ImportPath": "github.com/ethereum/go-ethereum/crypto/sha3",
+			"Comment": "v0.9.39-192-g5876692",
+			"Rev": "587669215b878566c4a7b91fbf88a6fd2ec4f46a"
+		},
+		{
+			"ImportPath": "github.com/ethereum/go-ethereum/logger",
+			"Comment": "v0.9.39-192-g5876692",
+			"Rev": "587669215b878566c4a7b91fbf88a6fd2ec4f46a"
+		},
+		{
+			"ImportPath": "github.com/ethereum/go-ethereum/rlp",
+			"Comment": "v0.9.39-192-g5876692",
+			"Rev": "587669215b878566c4a7b91fbf88a6fd2ec4f46a"
+		},
+		{
+			"ImportPath": "github.com/ethereum/go-ethereum/rpc/shared",
+			"Comment": "v0.9.39-192-g5876692",
+			"Rev": "587669215b878566c4a7b91fbf88a6fd2ec4f46a"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "ccfcd0245381f0c94c68f50626665eed3c6b726a"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "8f5946caaeeff40a98d67f60c25e89c3525038a3"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "5644820622454e71517561946e3d94b9f9db6842"
+		}
+	]
+}

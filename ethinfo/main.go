@@ -6,7 +6,7 @@ import (
 
 	"github.com/eris-ltd/eth-client/utils"
 
-	"github.com/spf13/cobra"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 var (

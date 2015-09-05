@@ -12,9 +12,9 @@ import (
 
 	"github.com/eris-ltd/eth-client/utils"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/ethereum/go-ethereum/common"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/ethereum/go-ethereum/crypto/sha3"
+	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/ethereum/go-ethereum/rlp"
 )
 
 // This must be initialized
