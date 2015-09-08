@@ -202,7 +202,8 @@ func Call(fromAddr, toAddr, amtS, gasS, priceS, data string, nonce uint64) (*Tra
 
 func Sign(signBytes, signAddr, signRPC string) (sig [65]byte, err error) {
 	args := map[string]string{
-		"hash": signBytes,
+		"msg":  signBytes,
+		"hash": signBytes, // backwards compatible
 		"addr": signAddr,
 	}
 	b, err := json.Marshal(args)
