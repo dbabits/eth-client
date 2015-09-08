@@ -1,5 +1,5 @@
 # eth-client
-Command line interfaces for low-level conversations with ethereum chains
+Command line interfaces for low-level conversations with ethereum chain(s)
 
 # Overview
 
@@ -42,7 +42,7 @@ mkdir ~/.myethereum
 ethgen $ADDR > ~/.myethereum/genesis.json
 ```
 
-Splendid! Take a look at that genesis file if you like. 
+Splendid! Take a look at that genesis file if you like with `cat ~/.myethereum/genesis.json` .
 Note that `ethgen` chooses reasonable default values for the difficulty and the gas-limit for running test chains. 
 If you want to customize, just use the flags. See `ethgen --help` for more.
 
@@ -56,6 +56,7 @@ This will start a private ethereum chain on your machine.
 Note the unfortunate reality of ethereum's proof of work means you need at least 1GB of free RAM for mining to work. 
 It may take some time for mining to get started (on the order of a few minutes). 
 Note on my 2013 macbook with 4GB RAM I cannot mine a test chain and have Firefox open at the same time.
+But hey, it's the price we pay for ASIC-resistance.
 
 # Ethereum Transactions
 
@@ -91,7 +92,7 @@ The balance should be `0xa` (ie. `10`)!
 
 Ok, let's break down the `ethtx` command a little bit. Ethereum only has one official transaction type, but it serves three distinct purposes. 
 You can simply send funds from one account to another, or you can create a contract, or you can call a contract.
-So `ethtx` has three main commands: `send`, `call`, and `create`.
+To reflect this, `ethtx` has three main commands: `send`, `create`, and `call`.
 Over time, `ethtx` will incorporate commands for talking to the major dapps, to facilitate interactions with them. The first such dapp will be the name reg, and you'll be able to use `ethtx name` to register a new name there.
 
 I should note, the `ethtx` flags accept both hex and base 10 numbers. If you are using hex, make sure to prefix with `0x`.
@@ -99,6 +100,19 @@ I should note, the `ethtx` flags accept both hex and base 10 numbers. If you are
 You can also specify a transaction's nonce with the `--nonce` flag. If no nonce is specified, the correct one is fetched from the blockchain.
 
 The `--sign` and `--broadcast` flags allow you to specify exactly what you want to do. Maybe you only want to craft the bytes for transaction and sign it later? Maybe you only want to sign it and broadcast it later? Or maybe you want to do everything now, in which case both `--sign` and `--broadcast` are appropriate. Soon, we will add a `--wait` feature so you can wait until the transaction is actually committed in a block.
+
+You can also add the `--binary` flag to print the hex encoded rlp serialization of the transaction. 
+For example, if you are signing the transaction offline, you might do:
+
+```bash
+ethtx send --addr=$ADDR --to=$ADDR2 --nonce=3 --amt=10 --gas=21000 --price=100000000000 --sign --binary
+```
+
+Note how we specify the nonce. This will print the transaction bytes, which we can copy and broadcast once we're back online with 
+
+```bash
+ethinfo broadcast <transaction bytes>
+```
 
 # Ethereum Contracts
 
@@ -148,6 +162,19 @@ The purpose of the `eth-client` itself however is a simple, low-level interface 
 
 Enjoy!
 
+# Tips
+
+By setting the `ETHTX_ADDR` environment variable, you can avoid passing the `--addr` flag.
+
+There are also `ETHTX_SIGN_ADDR` and `ETHTX_NODE_ADDR` environment variables to set the address of the signing daemon and the node itself.
+
+# Live Ethereum Network
+
+This tool works perfectly well on the live ethereum network (I have sent a couple transactions with it).
+
+However, as it is still in development, we urge you to excercise caution. 
+For example, use `--log 3` so you can see the transaction in human readable form before you issue the same command again with `--sign --broadcast`.
+
 # More
 
 Use the `--help` flag to learn more about the various commands and subcommands.
@@ -155,3 +182,5 @@ Use the `--help` flag to learn more about the various commands and subcommands.
 If you feel something is missing, or would like to see a feature added, please open an issue, or better yet a pull request.
 
 :)
+
+This tool was inspired by a similar suite of tools built for working with tendermint chains at https://github.com/eris-ltd/mint-client

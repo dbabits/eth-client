@@ -21,6 +21,9 @@ import (
 // This must be initialized
 var EthClient *utils.Client
 
+//---------------------------------------------------------------
+// transaction definition and methods
+
 // All ethereum transactions have a common form
 // NOTE: this struct isn't exported from go-ethereum/core/types :(
 type Transaction struct {
@@ -32,27 +35,7 @@ type Transaction struct {
 	V               byte     // signature
 	R, S            *big.Int // signature
 
-	from *common.Address
-}
-
-func (tx *Transaction) String() string {
-	var rec []byte
-	if tx.Recipient != nil {
-		rec = tx.Recipient.Bytes()
-	}
-	return fmt.Sprintf(`
-	Nonce: %d,
-	To: %x,
-	Amount: %x,
-	GasLimit: %x,
-	GasPrice: %x,
-	Data: %x
-`, tx.Nonce, rec, tx.Amount.Bytes(), tx.GasLimit.Bytes(), tx.Price.Bytes(), tx.Data)
-}
-
-// Return the signature as a byte array
-func (tx *Transaction) Signature() []byte {
-	return append(append(tx.R.Bytes(), tx.S.Bytes()...), tx.V)
+	from *common.Address // for convenience
 }
 
 func NewTransaction(to, from *common.Address, nonce uint64, amt, gas, price *big.Int, data []byte) *Transaction {
@@ -82,25 +65,13 @@ func NewTransaction(to, from *common.Address, nonce uint64, amt, gas, price *big
 	return tx
 }
 
-// Creates an ethereum address from a create transaction
-// If the tx doesn't create a contract, CreateAddress returns nil
-func (tx *Transaction) CreateAddress() []byte {
-	if tx.Recipient != nil {
-		return nil
-	}
-	data, _ := rlp.EncodeToBytes([]interface{}{tx.from, tx.Nonce})
-	hw := sha3.NewKeccak256()
-	hw.Write(data)
-	b := hw.Sum(nil)
-	return b[12:]
+func (tx *Transaction) Bytes() []byte {
+	return rlpEncode(tx)
 }
 
-// rlp encode and hash
-func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, x)
-	hw.Sum(h[:0])
-	return h
+// Return the signature as a byte array
+func (tx *Transaction) Signature() []byte {
+	return append(append(tx.R.Bytes(), tx.S.Bytes()...), tx.V)
 }
 
 // Hash of the transaction for signing
@@ -116,13 +87,6 @@ func (tx *Transaction) SignBytes() []byte {
 	return h[:]
 }
 
-// Apply the signature to the transaction
-func (tx *Transaction) ApplySignature(sig [65]byte) {
-	tx.R = new(big.Int).SetBytes(sig[:32])
-	tx.S = new(big.Int).SetBytes(sig[32:64])
-	tx.V = sig[64] + 27
-}
-
 // Sign the transaction using the keys server
 func (tx *Transaction) Sign(signAddr string) error {
 	if tx.from == nil {
@@ -136,6 +100,41 @@ func (tx *Transaction) Sign(signAddr string) error {
 	}
 	tx.ApplySignature(sig)
 	return nil
+}
+
+// Apply the signature to the transaction
+func (tx *Transaction) ApplySignature(sig [65]byte) {
+	tx.R = new(big.Int).SetBytes(sig[:32])
+	tx.S = new(big.Int).SetBytes(sig[32:64])
+	tx.V = sig[64] + 27
+}
+
+// Creates an ethereum address from a create transaction
+// If the tx doesn't create a contract, CreateAddress returns nil
+func (tx *Transaction) CreateAddress() []byte {
+	if tx.Recipient != nil {
+		return nil
+	}
+	data, _ := rlp.EncodeToBytes([]interface{}{tx.from, tx.Nonce})
+	hw := sha3.NewKeccak256()
+	hw.Write(data)
+	b := hw.Sum(nil)
+	return b[12:]
+}
+
+func (tx *Transaction) String() string {
+	var rec []byte
+	if tx.Recipient != nil {
+		rec = tx.Recipient.Bytes()
+	}
+	return fmt.Sprintf(`
+	Nonce: %d,
+	To: %x,
+	Amount: %x,
+	GasLimit: %x,
+	GasPrice: %x,
+	Data: %x
+`, tx.Nonce, rec, tx.Amount.Bytes(), tx.GasLimit.Bytes(), tx.Price.Bytes(), tx.Data)
 }
 
 //------------------------------------------------------------------------------------
@@ -348,6 +347,20 @@ func SignAndBroadcast(signAddr string, tx *Transaction, sign, broadcast, wait bo
 
 //------------------------------------------------------------------------------------
 // convenience function
+
+func rlpEncode(x interface{}) []byte {
+	w := new(bytes.Buffer)
+	rlp.Encode(w, x)
+	return w.Bytes()
+}
+
+// rlp encode and hash (for tx sign bytes)
+func rlpHash(x interface{}) (h common.Hash) {
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
+}
 
 // assumes the "0x" has already been clipped
 func hexToBig(s string) (*big.Int, error) {

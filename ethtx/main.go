@@ -41,10 +41,11 @@ func init() {
 	if addr != "" {
 		ADDR = addr
 	}
-
 }
 
 var (
+	// logging
+	LogLevelFlag int
 
 	// all transactions take
 	NonceFlag    uint64
@@ -54,11 +55,12 @@ var (
 
 	// sign/broadcast/wait
 	AddressFlag   string
+	BinaryFlag    bool
 	SignFlag      bool
 	BroadcastFlag bool
 	WaitFlag      bool
 
-	// addresses
+	// http addresses
 	HostAddrFlag string
 	SignAddrFlag string
 
@@ -82,7 +84,7 @@ func main() {
 		Use:   "version",
 		Short: "check ethtx version",
 		Run: func(cmd *cobra.Command, args []string) {
-			logger.Println("0.0.1")
+			logger.Println("0.0.2")
 		},
 	}
 
@@ -113,6 +115,7 @@ func main() {
 	callCmd.Flags().StringVarP(&DataFlag, "data", "d", "", "data to send to the contract")
 	createCmd.Flags().StringVarP(&DataFlag, "code", "c", "", "code for the new contract")
 
+	// COMMANDS
 	commands := []*cobra.Command{sendCmd, createCmd, callCmd}
 	addCommonFlags(commands)
 
@@ -121,9 +124,11 @@ func main() {
 		Short: "a tool for sending transactions to ethereum chains",
 		Long:  "a tool for sending transactions to ethereum chains",
 	}
+	rootCmd.PersistentFlags().IntVarP(&LogLevelFlag, "log", "l", 0, "set the log level")
 	rootCmd.PersistentFlags().StringVarP(&SignAddrFlag, "sign-addr", "", SIGN, "address to use for signing")
 	rootCmd.PersistentFlags().StringVarP(&HostAddrFlag, "node-addr", "", HOST, "address to use for signing")
 	rootCmd.PersistentFlags().StringVarP(&AddressFlag, "addr", "", ADDR, "address to use for signing")
+	rootCmd.PersistentFlags().BoolVarP(&BinaryFlag, "binary", "", false, "print the tx's rlp serialized bytes (eg. to broadcast later)")
 	rootCmd.PersistentFlags().BoolVarP(&SignFlag, "sign", "s", false, "sign the transaction")
 	rootCmd.PersistentFlags().BoolVarP(&BroadcastFlag, "broadcast", "b", false, "broadcast the tx to the chain")
 	rootCmd.PersistentFlags().BoolVarP(&WaitFlag, "wait", "w", false, "wait for the tx to be mined into a block")
@@ -141,7 +146,7 @@ func before(cmd *cobra.Command, args []string) {
 	HostAddrFlag = "http://" + HostAddrFlag
 	core.EthClient = utils.NewClient(HostAddrFlag)
 
-	log.SetLoggers(2, os.Stdout, os.Stderr)
+	log.SetLoggers(log.LogLevel(LogLevelFlag), os.Stdout, os.Stderr)
 }
 
 func after(cmd *cobra.Command, args []string) {

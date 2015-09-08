@@ -14,9 +14,14 @@ func cliSend(cmd *cobra.Command, args []string) {
 	logger.Infoln(tx)
 	r, err := core.SignAndBroadcast(SignAddrFlag, tx, SignFlag, BroadcastFlag, WaitFlag)
 	common.IfExit(err)
-	logger.Infof("Signature %X\n", tx.Signature())
+	if SignFlag {
+		logger.Infof("Signature: %X\n", tx.Signature())
+	}
 	if BroadcastFlag {
-		logger.Println("TxID", r)
+		logger.Println("TxID:", r)
+	}
+	if BinaryFlag {
+		logger.Printf("%X\n", tx.Bytes())
 	}
 }
 
@@ -26,10 +31,15 @@ func cliCreate(cmd *cobra.Command, args []string) {
 	logger.Infoln(tx)
 	r, err := core.SignAndBroadcast(SignAddrFlag, tx, SignFlag, BroadcastFlag, WaitFlag)
 	common.IfExit(err)
-	logger.Infof("Signature %X\n", tx.Signature())
+	if SignFlag {
+		logger.Infof("Signature: %X\n", tx.Signature())
+	}
 	if BroadcastFlag {
-		logger.Println("TxID", r)
-		logger.Printf("Address %X\n", tx.CreateAddress())
+		logger.Println("TxID:", r)
+		logger.Printf("Contract Address: %X\n", tx.CreateAddress())
+	}
+	if BinaryFlag {
+		logger.Printf("%X\n", tx.Bytes())
 	}
 }
 
@@ -39,9 +49,14 @@ func cliCall(cmd *cobra.Command, args []string) {
 	logger.Infoln(tx)
 	r, err := core.SignAndBroadcast(SignAddrFlag, tx, SignFlag, BroadcastFlag, WaitFlag)
 	common.IfExit(err)
-	logger.Infof("Signature %X\n", tx.Signature())
+	if SignFlag {
+		logger.Infof("Signature: %X\n", tx.Signature())
+	}
 	if BroadcastFlag {
-		logger.Println("TxID", r)
+		logger.Println("TxID:", r)
+	}
+	if BinaryFlag {
+		logger.Printf("%X\n", tx.Bytes())
 	}
 }
 
