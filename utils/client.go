@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/ethereum/go-ethereum/rpc/shared"
 )
@@ -76,4 +77,14 @@ func unmarshalCheckError(body []byte) (interface{}, error) {
 func HexToInt(s string) int64 {
 	d, _ := strconv.ParseInt(s, 0, 64)
 	return d
+}
+
+func StripHex(s string) string {
+	if strings.HasPrefix(s, "0x") {
+		if len(s) > 2 {
+			return s[2:]
+		}
+		return ""
+	}
+	return s
 }

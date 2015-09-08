@@ -48,9 +48,23 @@ func main() {
 
 	var accountCmd = &cobra.Command{
 		Use:   "account",
-		Short: "ethinfo account",
+		Short: "ethinfo account <address>",
 		Long:  "print an account",
 		Run:   cliAccount,
+	}
+
+	var storageCmd = &cobra.Command{
+		Use:   "storage",
+		Short: "ethinfo storage <address> [storage key]",
+		Long:  "print an account's storage or a single storage key",
+		Run:   cliStorage,
+	}
+
+	var broadcastCmd = &cobra.Command{
+		Use:   "broadcast",
+		Short: "ethinfo broadcast <tx hex>",
+		Long:  "broadcast a hex encoded rlp serialized transaction",
+		Run:   cliBroadcast,
 	}
 
 	var rootCmd = &cobra.Command{
@@ -62,7 +76,7 @@ func main() {
 
 	rootCmd.PersistentPreRun = before
 
-	rootCmd.AddCommand(versionCmd, statusCmd, accountCmd)
+	rootCmd.AddCommand(versionCmd, statusCmd, accountCmd, storageCmd, broadcastCmd)
 	rootCmd.Execute()
 }
 

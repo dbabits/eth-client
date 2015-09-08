@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/eris-ltd/eth-client/utils"
 
@@ -90,7 +91,8 @@ func (tx *Transaction) CreateAddress() []byte {
 	data, _ := rlp.EncodeToBytes([]interface{}{tx.from, tx.Nonce})
 	hw := sha3.NewKeccak256()
 	hw.Write(data)
-	return hw.Sum(nil)
+	b := hw.Sum(nil)
+	return b[12:]
 }
 
 // rlp encode and hash
@@ -150,7 +152,7 @@ func Send(fromAddr, toAddr, amtS, gasS, priceS string, nonce uint64) (*Transacti
 		return nil, fmt.Errorf("destination address must be given with --to flag")
 	}
 
-	toAddrBytes, err := hex.DecodeString(toAddr)
+	toAddrBytes, err := hex.DecodeString(utils.StripHex(toAddr))
 	if err != nil {
 		return nil, fmt.Errorf("toAddr is bad hex: %v", err)
 	}
@@ -165,7 +167,7 @@ func Create(fromAddr, amtS, gasS, priceS, data string, nonce uint64) (*Transacti
 		return nil, err
 	}
 
-	dataBytes, err := hex.DecodeString(data)
+	dataBytes, err := hex.DecodeString(utils.StripHex(data))
 	if err != nil {
 		return nil, fmt.Errorf("data is bad hex: %s", data)
 	}
@@ -182,13 +184,13 @@ func Call(fromAddr, toAddr, amtS, gasS, priceS, data string, nonce uint64) (*Tra
 		return nil, fmt.Errorf("destination address must be given with --to flag")
 	}
 
-	toAddrBytes, err := hex.DecodeString(toAddr)
+	toAddrBytes, err := hex.DecodeString(utils.StripHex(toAddr))
 	if err != nil {
 		return nil, fmt.Errorf("toAddr is bad hex: %v", err)
 	}
 	to := common.BytesToAddress(toAddrBytes)
 
-	dataBytes, err := hex.DecodeString(data)
+	dataBytes, err := hex.DecodeString(utils.StripHex(data))
 	if err != nil {
 		return nil, fmt.Errorf("data is bad hex: %s", data)
 	}
@@ -358,8 +360,8 @@ func hexToBig(s string) (*big.Int, error) {
 
 // accepts hex or string encoded integers
 func stringToBig(s string) (*big.Int, error) {
-	if len(s) > 2 && s[:2] == "0x" {
-		return hexToBig(s[2:])
+	if strings.HasPrefix(s, "0x") {
+		return hexToBig(utils.StripHex(s))
 	}
 	d, err := strconv.ParseInt(s, 0, 64)
 	if err != nil {
@@ -390,7 +392,7 @@ func checkCommon(addr, amtS, gasS, priceS string, seq uint64) (from common.Addre
 		return
 	}
 	var addrBytes []byte
-	addrBytes, err = hex.DecodeString(addr)
+	addrBytes, err = hex.DecodeString(utils.StripHex(addr))
 	if err != nil {
 		err = fmt.Errorf("addr is bad hex: %v", err)
 		return

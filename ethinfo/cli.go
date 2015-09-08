@@ -10,6 +10,9 @@ import (
 	"github.com/eris-ltd/eth-client/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
+//---------------------------------------------------------------
+// ethinfo status
+
 type ChainStatus struct {
 	ProtocolVersion string `json:"protocol_version"`
 	BlockNumber     int64  `json:"block_number"`
@@ -75,6 +78,9 @@ func cliStatus(cmd *cobra.Command, args []string) {
 	fmt.Println(string(b))
 }
 
+//---------------------------------------------------------------
+// ethinfo account
+
 type Account struct {
 	Address     string `json:"address"`
 	Nonce       uint64 `json:"nonce"`
@@ -111,4 +117,53 @@ func cliAccount(cmd *cobra.Command, args []string) {
 	b, err := json.MarshalIndent(acc, "", "\t")
 	common.IfExit(err)
 	fmt.Println(string(b))
+}
+
+//---------------------------------------------------------------
+// ethinfo storage
+
+func cliStorage(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		common.Exit(fmt.Errorf("must specify an account"))
+	}
+
+	addr := args[0]
+	var storageKey string
+	if len(args) > 1 {
+		storageKey = args[1]
+	}
+
+	r, err := client.RequestResponse("eth", "blockNumber")
+	common.IfExit(err)
+	blockNum := utils.HexToInt(r.(string))
+
+	if storageKey == "" {
+		// get all the storage
+		r, err = client.RequestResponse("eth", "getStorage", addr, blockNum)
+		common.IfExit(err)
+		m := r.(map[string]interface{})
+		for k, v := range m {
+			fmt.Printf("%s: %s\n", k, v)
+		}
+	} else {
+		// only grab one storage entry
+		r, err = client.RequestResponse("eth", "getStorageAt", addr, storageKey, blockNum)
+		common.IfExit(err)
+		fmt.Println(r)
+	}
+}
+
+//---------------------------------------------------------------
+// ethinfo broadcast
+
+// TODO: this should be able to read off stdin too
+func cliBroadcast(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		common.Exit(fmt.Errorf("must pass some transaction bytes"))
+	}
+
+	txHex := args[0]
+	r, err := client.RequestResponse("eth", "sendRawTransaction", txHex)
+	common.IfExit(err)
+	fmt.Println(r)
 }
