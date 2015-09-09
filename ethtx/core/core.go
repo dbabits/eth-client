@@ -210,7 +210,7 @@ func Sign(signBytes, signAddr, signRPC string) (sig [65]byte, err error) {
 	if err != nil {
 		return
 	}
-	logger.Debugln("Sending request body:", string(b))
+	logger.Debugln("Requesting signature from eris-keys:", string(b))
 	req, err := http.NewRequest("POST", signRPC+"/sign", bytes.NewBuffer(b))
 	if err != nil {
 		return
@@ -237,9 +237,8 @@ func Broadcast(tx *Transaction) (interface{}, error) {
 	if err := rlp.Encode(w, tx); err != nil {
 		return nil, err
 	}
-	fmt.Println("Tx Serialized")
 	txHex := fmt.Sprintf("%X", w.Bytes())
-	fmt.Println(txHex)
+	logger.Debugln("Broadcasting transaction bytes", txHex)
 	r, err := EthClient.RequestResponse("eth", "sendRawTransaction", txHex)
 	if err != nil {
 		return nil, err

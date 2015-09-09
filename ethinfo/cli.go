@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/eris-ltd/eth-client/utils"
 
@@ -27,7 +28,7 @@ type NetStatus struct {
 type MiningStatus struct {
 	Mining   bool   `json:"mining"`
 	Coinbase string `json:"coinbase"`
-	GasPrice string `json:"gas_price"` // hex
+	Price    string `json:"gas_price"` // hex
 }
 
 type Status struct {
@@ -71,7 +72,7 @@ func cliStatus(cmd *cobra.Command, args []string) {
 
 	r, err = client.RequestResponse("eth", "gasPrice")
 	common.IfExit(err)
-	status.MiningStatus.GasPrice = r.(string)
+	status.MiningStatus.Price = r.(string)
 
 	b, err := json.MarshalIndent(status, "", "\t")
 	common.IfExit(err)
@@ -141,16 +142,29 @@ func cliStorage(cmd *cobra.Command, args []string) {
 		// get all the storage
 		r, err = client.RequestResponse("eth", "getStorage", addr, blockNum)
 		common.IfExit(err)
-		m := r.(map[string]interface{})
-		for k, v := range m {
-			fmt.Printf("%s: %s\n", k, v)
-		}
+		sortPrintMap(r.(map[string]interface{}))
 	} else {
 		// only grab one storage entry
 		r, err = client.RequestResponse("eth", "getStorageAt", addr, storageKey, blockNum)
 		common.IfExit(err)
 		fmt.Println(r)
 	}
+}
+
+//---------------------------------------------------------------
+// ethinfo receipt
+
+func cliReceipt(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		common.Exit(fmt.Errorf("must specify tx hash"))
+	}
+
+	txHash := args[0]
+
+	r, err := client.RequestResponse("eth", "getTransactionReceipt", txHash)
+	common.IfExit(err)
+	sortPrintMap(r.(map[string]interface{}))
+
 }
 
 //---------------------------------------------------------------
@@ -167,3 +181,80 @@ func cliBroadcast(cmd *cobra.Command, args []string) {
 	common.IfExit(err)
 	fmt.Println(r)
 }
+
+//---------------------------------------------------------------
+// ethinfo estimate
+
+type callData struct {
+	From     string
+	To       string
+	Value    interface{}
+	Gas      interface{}
+	GasPrice interface{}
+	Data     string
+}
+
+func cliEstimate(cmd *cobra.Command, args []string) {
+	r, err := client.RequestResponse("eth", "blockNumber")
+	common.IfExit(err)
+	blockNum := utils.HexToInt(r.(string))
+
+	callArgs := callData{FromFlag, ToFlag, AmtFlag, GasFlag, PriceFlag, DataFlag}
+
+	r, err = client.RequestResponse("eth", "estimateGas", callArgs, blockNum)
+	common.IfExit(err)
+	fmt.Println(r)
+}
+
+//---------------------------------------------------------------
+// ethinfo call
+
+func cliCall(cmd *cobra.Command, args []string) {
+	r, err := client.RequestResponse("eth", "blockNumber")
+	common.IfExit(err)
+	blockNum := utils.HexToInt(r.(string))
+
+	callArgs := callData{FromFlag, ToFlag, AmtFlag, GasFlag, PriceFlag, DataFlag}
+
+	r, err = client.RequestResponse("eth", "call", callArgs, blockNum)
+	common.IfExit(err)
+	fmt.Println(r)
+}
+
+//---------------------------------------------------------------
+// ethinfo blocks
+
+func cliBlocks(cmd *cobra.Command, args []string) {
+}
+
+//---------------------------------------------------------------
+// utils
+
+type pair struct {
+	key   string
+	value interface{}
+}
+
+func sortPrintMap(m map[string]interface{}) {
+	pairs := make([]pair, len(m))
+	i := 0
+	for k, v := range m {
+		pairs[i] = pair{k, v}
+		i += 1
+	}
+	sort.Sort(sortPairs(pairs))
+
+	for _, p := range pairs {
+		if p.value == nil {
+			p.value = interface{}("")
+		}
+		fmt.Printf("%s: %s\n", p.key, p.value)
+	}
+
+}
+
+type sortPairs []pair
+
+func (v sortPairs) Len() int           { return len(v) }
+func (v sortPairs) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
+func (v sortPairs) Less(i, j int) bool { return v[i].key < v[j].key }

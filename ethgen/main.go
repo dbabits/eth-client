@@ -23,7 +23,7 @@ var (
 
 func main() {
 	var rootCmd = &cobra.Command{
-		Use:   "ethgen",
+		Use:   "ethgen <addr1> <addr2> ...",
 		Short: "a tool for generating ethereum genesis files",
 		Long:  "a tool for generating ethereum genesis files",
 		Run:   cliGen,
